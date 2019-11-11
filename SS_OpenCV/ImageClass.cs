@@ -82,6 +82,75 @@ namespace SS_OpenCV
             }
         }
 
+
+        /// <summary>
+        /// Convert to 1 component
+        /// Direct access to memory - faster method
+        /// </summary>
+        /// <param name="img">image</param>
+        public static void ConvertToOneComponent(Image<Bgr, byte> img, String color)
+        {
+            unsafe
+            {
+                // direct access to the image memory(sequencial)
+                // direcion top left -> bottom right
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+                byte blue, green, red;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            //retrive 3 colour components
+                            blue = dataPtr[0];
+                            green = dataPtr[1];
+                            red = dataPtr[2];
+
+                            // convert to gray
+                            //gray = (byte)Math.Round(((int)blue + green + red) / 3.0);
+
+                            // store in the image
+                            switch (color)
+                            {
+                                case "blue":
+                                    dataPtr[0] = blue;
+                                    dataPtr[1] = blue;
+                                    dataPtr[2] = blue;
+                                    break;
+                                case "green":
+                                    dataPtr[0] = green;
+                                    dataPtr[1] = green;
+                                    dataPtr[2] = green;
+                                    break;
+                                case "red":
+                                    dataPtr[0] = red;
+                                    dataPtr[1] = red;
+                                    dataPtr[2] = red;
+                                    break;
+                            }
+
+                            // advance the pointer to the next pixel
+                            dataPtr += nChan;
+                        }
+
+                        //at the end of the line advance the pointer by the aligment bytes (padding)
+                        dataPtr += padding;
+                    }
+                }
+            }
+        }
+               
+
         /// <summary>
         /// Image translation
         /// Direct access to memory - faster method
@@ -188,6 +257,7 @@ namespace SS_OpenCV
                 }
             }
         }
+
 
         public static void Mean(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
         {
