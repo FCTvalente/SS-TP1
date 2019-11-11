@@ -1,1 +1,8 @@
-.vs/*
+.vs/
+SS_OpenCV/bin/Debug/SS_OpenCV.exe
+SS_OpenCV/bin/Debug/SS_OpenCV.pdb
+SS_OpenCV/bin/Debug/SS_OpenCV.csproj.CoreCompileInputs.cache
+SS_OpenCV/bin/Debug/SS_OpenCV.csproj.FileListAbsolute.txt
+SS_OpenCV/bin/Debug/SS_OpenCV.csproj.GenerateResource.cache
+SS_OpenCV/obj/Debug/SS_OpenCV.exe
+SS_OpenCV/obj/Debug/SS_OpenCV.pdb
