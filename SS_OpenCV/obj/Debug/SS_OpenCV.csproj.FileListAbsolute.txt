@@ -167,3 +167,18 @@ D:\Universidade\VS\SS-A1\SS_OpenCV\obj\Debug\SS_OpenCV.exe
 D:\Universidade\VS\SS-A1\SS_OpenCV\obj\Debug\SS_OpenCV.pdb
 D:\Universidade\VS\SS-A1\SS_OpenCV\obj\Debug\SS_OpenCV.WeightMatrix.resources
 D:\Universidade\VS\SS-A1\SS_OpenCV\obj\Debug\SS_OpenCV.HistogramForm.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\bin\Debug\SS_OpenCV.exe.config
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\bin\Debug\SS_OpenCV.exe
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\bin\Debug\SS_OpenCV.pdb
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.csprojAssemblyReference.cache
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.AuthorsForm.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.HistogramForm.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.InputBox.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.MainForm.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.Properties.Resources.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.WeightMatrix.resources
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.GenerateResource.cache
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.CoreCompileInputs.cache
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.csproj.CopyComplete
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.exe
+G:\1) Faculdade\SS\SS TP1\SS-TP1\SS_OpenCV\obj\Debug\SS_OpenCV.pdb
