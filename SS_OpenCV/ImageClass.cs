@@ -729,5 +729,15 @@ namespace SS_OpenCV
                 }
             }
         }
+
+        public static void RGBtoHSV(Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+
+            }
+
+        }
+
     }
 }
