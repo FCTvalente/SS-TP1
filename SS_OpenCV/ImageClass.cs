@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Emgu.CV.Structure;
 using Emgu.CV;
+using System.Diagnostics;
 
 namespace SS_OpenCV
 {
@@ -149,7 +150,7 @@ namespace SS_OpenCV
                 }
             }
         }
-               
+
 
         /// <summary>
         /// Image translation
@@ -164,7 +165,7 @@ namespace SS_OpenCV
                 // direcion top left -> bottom right
                 int width = img.Width;
                 int height = img.Height;
-                
+
                 img.Bitmap = new System.Drawing.Bitmap(width, height);
                 MIplImage m1 = img.MIplImage;
                 MIplImage m2 = imgCopy.MIplImage;
@@ -181,7 +182,7 @@ namespace SS_OpenCV
                     for (y = 0; y < height; y++)
                     {
                         ry = (int)Math.Round(y + yoffset);
-                        if(ry >= 0 && ry < height)
+                        if (ry >= 0 && ry < height)
                         {
                             for (x = 0; x < width; x++)
                             {
@@ -291,18 +292,18 @@ namespace SS_OpenCV
                             sumb = 0;
                             sumg = 0;
                             sumr = 0;
-                            for(dx = -step; dx < step + 1; dx++)
+                            for (dx = -step; dx < step + 1; dx++)
                             {
                                 rx = x + dx;
-                                if(rx < 0)
+                                if (rx < 0)
                                 {
                                     rx = 0;
                                 }
-                                else if(rx >= width)
+                                else if (rx >= width)
                                 {
                                     rx = width - 1;
                                 }
-                                for(dy = -step; dy < step + 1; dy++)
+                                for (dy = -step; dy < step + 1; dy++)
                                 {
                                     ry = y + dy;
                                     if (ry < 0)
@@ -324,7 +325,7 @@ namespace SS_OpenCV
                             dataPtr[0] = (byte)(sumb / area);
                             dataPtr[1] = (byte)(sumg / area);
                             dataPtr[2] = (byte)(sumr / area);
-                            
+
                             // advance the pointer to the next pixel
                             dataPtr += nChan;
                         }
@@ -399,7 +400,7 @@ namespace SS_OpenCV
                             sumb = sumb >= 0 ? sumb : 0;
                             sumg = sumg >= 0 ? sumg : 0;
                             sumr = sumr >= 0 ? sumr : 0;
-                            
+
                             // store in the image
                             dataPtr[0] = (byte)(sumb / matrixWeight);
                             dataPtr[1] = (byte)(sumg / matrixWeight);
@@ -617,7 +618,7 @@ namespace SS_OpenCV
                         blue = dataPtr[0];
                         green = dataPtr[1];
                         red = dataPtr[2];
-                        
+
                         res[red, 0]++;
                         res[green, 1]++;
                         res[blue, 2]++;
@@ -730,11 +731,158 @@ namespace SS_OpenCV
             }
         }
 
-        public static void RGBtoHSV(Image<Bgr, byte> img)
+        public static void RGBtoHSVPrime(Image<Bgr, byte> img)
         {
             unsafe
             {
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+                byte blue, green, red;
+                byte newBlue, newGreen, newRed;
 
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+
+                double hue = 0f, saturation = 0f, value = 0f;
+                double[] prevHSV;
+                double[] prevRGB = new double[3];
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+
+                            //retrive 3 colour components
+                            blue = dataPtr[0];
+                            green = dataPtr[1];
+                            red = dataPtr[2];
+
+                            prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
+                            
+                            prevRGB = HSVtoRGB(prevHSV[0], prevHSV[1], prevHSV[2]);
+
+                            blue = (byte)(int)prevRGB[2];
+                            green = (byte)(int)prevRGB[1];
+                            red = (byte)(int)prevRGB[0];
+
+                            
+
+                            dataPtr[0] = blue;
+                            dataPtr[1] = green;
+                            dataPtr[2] = red;
+
+                            dataPtr += nChan;
+                        }
+
+                        dataPtr += padding;
+                    }
+                }
+
+            }
+
+        }
+
+
+        public static double[] RGBtoHSV(double red, double blue, double green)
+        {
+            double[] HSV = new double[3];
+
+            double newRed = red / 255;
+            double newBlue = blue / 255;
+            double newGreen = green / 255;
+
+            double min = Math.Min(Math.Min(newRed, newGreen), newBlue);
+            double max = Math.Max(Math.Max(newRed, newGreen), newBlue);
+
+            double delta = max - min;
+
+            double saturation;
+
+            if(max == 0)
+            {
+                saturation = 0;
+            } else
+            {
+                saturation = delta / max;
+            }
+
+            double value = max;
+
+            double hue;
+
+            if(delta == 0)
+            {
+                hue = 0;
+            } else if(max == newRed)
+            {
+                hue = 60 * (0 + (newGreen - newBlue) / delta);
+                hue = hue < 0 ? hue + 360 : hue;
+                saturation = saturation + delta * 2 > 1 ? 1 : saturation + delta * 2;
+                value = value + delta * 2 > 1 ? 1 : value + delta * 2;
+            } else if(max == newGreen)
+            {
+                hue = 60 * (2 + (newBlue - newRed) / delta);
+            } else
+            {
+                hue = 60 * (4 + (newRed - newGreen) / delta);
+                hue = hue > 360 ? hue - 360 : hue;
+            }
+
+            HSV[0] = hue;
+            HSV[1] = saturation;
+            HSV[2] = value;
+
+            return HSV;
+        }
+
+        public static double[] HSVtoRGB(double hue, double saturation, double value)
+        {
+            unsafe
+            {
+                double c = 0f, hueNewValue = 0f, x = 0f, m = 0f;
+                double[] prevRGB = new double[3];
+
+                c = value * saturation;
+                hueNewValue = hue / 60;
+                x = c * (1 - Math.Abs(hueNewValue % 2 - 1));
+
+                if (0 <= hue && hue <= 60)
+                {
+                    prevRGB[0] = c; prevRGB[1] = x; prevRGB[2] = 0;
+                }
+                else if (60 < hue && hue<= 120)
+                {
+                    prevRGB[0] = x; prevRGB[1] = c; prevRGB[2] = 0;
+                }
+                else if (120 < hue && hue <= 180)
+                {
+                    prevRGB[0] = 0; prevRGB[1] = c; prevRGB[2] = x;
+                }
+                else if (180 < hue && hue <= 240)
+                {
+                    prevRGB[0] = 0; prevRGB[1] = x; prevRGB[2] = c;
+                }
+                else if (240 < hue && hue <= 300)
+                {
+                    prevRGB[0] = x; prevRGB[1] = 0; prevRGB[2] = c;
+                }
+                else if (300 < hue && hue <= 360)
+                {
+                    prevRGB[0] = c; prevRGB[1] = 0; prevRGB[2] = x;
+                }
+
+                m = value - c;
+
+                prevRGB[0] = (prevRGB[0] + m)*255;
+                prevRGB[1] = (prevRGB[1] + m)*255;
+                prevRGB[2] = (prevRGB[2] + m)*255;
+
+                return prevRGB;
             }
 
         }

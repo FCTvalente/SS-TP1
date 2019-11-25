@@ -416,7 +416,7 @@ namespace SS_OpenCV
             //copy Undo Image
             imgUndo = img.Copy();
 
-            ImageClass.RGBtoHSV(img);
+            ImageClass.RGBtoHSVPrime(img);
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
