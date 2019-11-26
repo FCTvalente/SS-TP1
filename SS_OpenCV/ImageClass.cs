@@ -17,16 +17,38 @@ namespace SS_OpenCV
         /// <param name="img">Image</param>
         public static void Negative(Image<Bgr, byte> img)
         {
-            int x, y;
-
-            Bgr aux;
-            for (y = 0; y < img.Height; y++)
+            unsafe
             {
-                for (x = 0; x < img.Width; x++)
+                // direct access to the image memory(sequencial)
+                // direcion top left -> bottom right
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+
+                if (nChan == 3) // image in RGB
                 {
-                    // acesso directo : mais lento 
-                    aux = img[y, x];
-                    img[y, x] = new Bgr(255 - aux.Blue, 255 - aux.Green, 255 - aux.Red);
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            // store in the image
+                            dataPtr[0] = (byte)(255 - dataPtr[0]);
+                            dataPtr[1] = (byte)(255 - dataPtr[1]);
+                            dataPtr[2] = (byte)(255 - dataPtr[2]);
+
+                            // advance the pointer to the next pixel
+                            dataPtr += nChan;
+                        }
+
+                        //at the end of the line advance the pointer by the aligment bytes (padding)
+                        dataPtr += padding;
+                    }
                 }
             }
         }
@@ -738,15 +760,13 @@ namespace SS_OpenCV
                 MIplImage m = img.MIplImage;
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
                 byte blue, green, red;
-                byte newBlue, newGreen, newRed;
 
                 int width = img.Width;
                 int height = img.Height;
                 int nChan = m.nChannels; // number of channels - 3
                 int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
                 int x, y;
-
-                double hue = 0f, saturation = 0f, value = 0f;
+                
                 double[] prevHSV;
                 double[] prevRGB = new double[3];
 
@@ -822,8 +842,9 @@ namespace SS_OpenCV
             {
                 hue = 60 * (0 + (newGreen - newBlue) / delta);
                 hue = hue < 0 ? hue + 360 : hue;
-                saturation = saturation + delta * 2 > 1 ? 1 : saturation + delta * 2;
-                value = value + delta * 2 > 1 ? 1 : value + delta * 2;
+                double dif = newRed + newRed - newGreen - newBlue;
+                saturation = saturation + dif > 1 ? 1 : saturation + dif;
+                value = value + dif > 1 ? 1 : value + dif;
             } else if(max == newGreen)
             {
                 hue = 60 * (2 + (newBlue - newRed) / delta);
