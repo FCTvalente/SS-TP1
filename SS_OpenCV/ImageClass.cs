@@ -834,6 +834,82 @@ namespace SS_OpenCV
             Binarization(img, res);
         }
 
+        public static void BradleyRoth(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
+        {
+            unsafe
+            {
+                int width = img.Width;
+                int height = img.Height;
+                img.Bitmap = new System.Drawing.Bitmap(width, height);
+                MIplImage m1 = img.MIplImage;
+                MIplImage m2 = imgCopy.MIplImage;
+                byte* dataPtr = (byte*)m1.imageData.ToPointer(); // Pointer to the image
+                byte* startPtr = (byte*)m2.imageData.ToPointer(); // Pointer to the image
+                int range = width / 8;
+                range = range + range % 2 + 1;
+                range = 3;
+                int area = range * range;
+                int step = (range - 1) / 2;
+
+                int nChan = m1.nChannels; // number of channels - 3
+                int padding = m1.widthStep - m1.nChannels * m1.width; // alinhament bytes (padding)
+                byte* offsetPtr = dataPtr;
+                int x, y, sum, gray, current, dx, dy, rx, ry;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            sum = 0;
+                            for (dx = -step; dx < step + 1; dx++)
+                            {
+                                rx = x + dx;
+                                if (rx < 0)
+                                {
+                                    rx = 0;
+                                }
+                                else if (rx >= width)
+                                {
+                                    rx = width - 1;
+                                }
+                                for (dy = -step; dy < step + 1; dy++)
+                                {
+                                    ry = y + dy;
+                                    if (ry < 0)
+                                    {
+                                        ry = 0;
+                                    }
+                                    else if (ry >= height)
+                                    {
+                                        ry = height - 1;
+                                    }
+                                    offsetPtr = startPtr + ry * padding + (ry * width + rx) * nChan;
+                                    sum += offsetPtr[0];
+                                }
+                            }
+                            offsetPtr = startPtr + y * padding + (y * width + x) * nChan;
+                            current = offsetPtr[0];
+                            sum = sum / area;
+                            gray = current < sum * (1.0f - 0.15f) ? 0 : 255;
+
+                            // store in the image
+                            dataPtr[0] = (byte)gray;
+                            dataPtr[1] = (byte)gray;
+                            dataPtr[2] = (byte)gray;
+
+                            // advance the pointer to the next pixel
+                            dataPtr += nChan;
+                        }
+
+                        //at the end of the line advance the pointer by the aligment bytes (padding)
+                        dataPtr += padding;
+                    }
+                }
+            }
+        }
+
         public static void RGBtoHSVPrime(Image<Bgr, byte> img)
         {
             unsafe
@@ -885,6 +961,8 @@ namespace SS_OpenCV
                 }
 
             }
+            //ConvertToOneComponent(img, "red");
+            //Negative(img);
 
         }
 
@@ -916,6 +994,7 @@ namespace SS_OpenCV
 
             double hue;
 
+            //dif = (Math.Abs(newRed - newBlue) + Math.Abs(newRed - newGreen));
             if(delta == 0)
             {
                 hue = 0;
@@ -923,16 +1002,17 @@ namespace SS_OpenCV
             {
                 hue = 60 * (0 + (newGreen - newBlue) / delta);
                 hue = hue < 0 ? hue + 360 : hue;
-                double dif = newRed + newRed - newGreen - newBlue;
-                saturation = saturation + dif > 1 ? 1 : saturation + dif;
-                value = value + dif > 1 ? 1 : value + dif;
+                double mult = hue <= 60.0d && hue >= 0.0d ? (60.0d - hue) / 60.0d : (hue - 300.0d) / 60.0d;
+                mult = mult > .5d ? (mult * 2.0d) - 1.0d : 0.0d;
+                mult = mult * saturation;
+                value = value + mult > 1 ? 1 : value + mult;
+                
             } else if(max == newGreen)
             {
                 hue = 60 * (2 + (newBlue - newRed) / delta);
             } else
             {
                 hue = 60 * (4 + (newRed - newGreen) / delta);
-                hue = hue > 360 ? hue - 360 : hue;
             }
 
             HSV[0] = hue;
