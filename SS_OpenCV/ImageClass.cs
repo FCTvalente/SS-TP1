@@ -618,6 +618,45 @@ namespace SS_OpenCV
             }
         }
 
+        public static float[] Histogram_Gray_Prob(Emgu.CV.Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+                float[] res = new float[256];
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                float step = 1.0f / (width * height);
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y, red, green, blue, gray;
+
+                for (y = 0; y < height; y++)
+                {
+                    for (x = 0; x < width; x++)
+                    {
+                        blue = dataPtr[0];
+                        green = dataPtr[1];
+                        red = dataPtr[2];
+
+                        gray = (blue + green + red) / 3;
+                        res[gray] += step;
+
+                        // advance the pointer to the next pixel
+                        dataPtr += nChan;
+                    }
+                    //at the end of the line advance the pointer by the aligment bytes (padding)
+                    dataPtr += padding;
+                }
+
+                return res;
+
+            }
+        }
+
         public static int[,] Histogram_RGB(Emgu.CV.Image<Bgr, byte> img)
         {
             unsafe
@@ -751,6 +790,48 @@ namespace SS_OpenCV
                     }
                 }
             }
+        }
+
+        public static void ConvertToBW_Otsu(Image<Bgr, byte> img)
+        {
+            float[] hist = Histogram_Gray_Prob(img);
+            float max = 0.0f;
+            int res = 0;
+            float q1 = hist[0];
+            float q2 = 1.0f - q1;
+            float ul1 = hist[0];
+            float ul2 = 0.0f;
+            float t;
+            for(int i = 1; i < hist.Length; i++)
+            {
+                ul2 += (i + 1) * hist[i];
+            }
+            if(ul1 > 0)
+            {
+                max = q1 * q2 * (ul1 / q1 - ul2 / q2) * (ul1 / q1 - ul2 / q2);
+            }
+            for (int i = 1; i < hist.Length; i++)
+            {
+                q1 += hist[i];
+                if(q1 == 0.0f)
+                {
+                    continue;
+                }
+                q2 -= hist[i];
+                if(q2 == 0.0f)
+                {
+                    break;
+                }
+                ul1 += (i + 1) * hist[i];
+                ul2 -= (i + 1) * hist[i];
+                t = q1 * q2 * (ul1 / q1 - ul2 / q2) * (ul1 / q1 - ul2 / q2);
+                if(t > max)
+                {
+                    max = t;
+                    res = i;
+                }
+            }
+            Binarization(img, res);
         }
 
         public static void RGBtoHSVPrime(Image<Bgr, byte> img)
