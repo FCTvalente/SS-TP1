@@ -939,9 +939,10 @@ namespace SS_OpenCV
                             green = dataPtr[1];
                             red = dataPtr[2];
 
-                            prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
-                            
-                            prevRGB = HSVtoRGB(prevHSV[0], prevHSV[1], prevHSV[2]);
+                            //prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
+
+                            //prevRGB = HSVtoRGB(prevHSV[0], prevHSV[1], prevHSV[2]);
+                            prevRGB = IntensifyRed((int)red, (int)blue, (int)green);
 
                             blue = (byte)(int)prevRGB[2];
                             green = (byte)(int)prevRGB[1];
@@ -962,10 +963,77 @@ namespace SS_OpenCV
 
             }
             //ConvertToOneComponent(img, "red");
-            //Negative(img);
+            //Binarization(img, 200);
 
         }
 
+        public static double[] IntensifyRed(double red, double blue, double green)
+        {
+            double newRed = red / 255;
+            double newBlue = blue / 255;
+            double newGreen = green / 255;
+
+            double min = Math.Min(Math.Min(newRed, newGreen), newBlue);
+            double max = Math.Max(Math.Max(newRed, newGreen), newBlue);
+
+            double delta = max - min;
+
+            double saturation;
+
+            if (max == 0)
+            {
+                saturation = 0;
+            }
+            else
+            {
+                saturation = delta / max;
+            }
+
+            double value = 0;
+
+            double hue = 180;
+
+            if (max == newRed && delta != 0)
+            {
+                value = max;
+                hue = 60 * (0 + (newGreen - newBlue) / delta);
+                hue = hue < 0 ? hue + 360 : hue;
+                double mult = hue <= 60.0d && hue >= 0.0d ? (60.0d - hue) / 60.0d : (hue - 300.0d) / 60.0d;
+                //mult = mult > .5d ? (mult * 2.0d) - 1.0d : 0.0d;
+                mult = mult * (saturation * 2 - 1) * 2;
+                value = value + mult > 1 ? 1 : value + mult;
+                value = value > 0 ? value : 0;
+                value = saturation < .5d ? saturation : value;
+            }
+
+            double c = 0f, hueNewValue = 0f, x = 0f, m = 0f;
+            double[] prevRGB = new double[3];
+
+            c = value * saturation;
+            hueNewValue = hue / 60;
+            x = c * (1 - Math.Abs(hueNewValue % 2 - 1));
+
+            m = value - c;
+
+            if (0 <= hue && hue <= 60)
+            {
+                prevRGB[0] = c; prevRGB[1] = x; prevRGB[2] = 0;
+            }
+            else if (300 < hue && hue <= 360)
+            {
+                prevRGB[0] = c; prevRGB[1] = 0; prevRGB[2] = x;
+            }
+            else
+            {
+                prevRGB[0] = 0; prevRGB[1] = 0; prevRGB[2] = 0; m = 0;
+            }
+
+            prevRGB[0] = (prevRGB[0] + m) * 255;
+            prevRGB[1] = (prevRGB[1] + m) * 255;
+            prevRGB[2] = (prevRGB[2] + m) * 255;
+
+            return prevRGB;
+        }
 
         public static double[] RGBtoHSV(double red, double blue, double green)
         {
@@ -993,8 +1061,7 @@ namespace SS_OpenCV
             double value = max;
 
             double hue;
-
-            //dif = (Math.Abs(newRed - newBlue) + Math.Abs(newRed - newGreen));
+            
             if(delta == 0)
             {
                 hue = 0;
@@ -1002,11 +1069,6 @@ namespace SS_OpenCV
             {
                 hue = 60 * (0 + (newGreen - newBlue) / delta);
                 hue = hue < 0 ? hue + 360 : hue;
-                double mult = hue <= 60.0d && hue >= 0.0d ? (60.0d - hue) / 60.0d : (hue - 300.0d) / 60.0d;
-                mult = mult > .5d ? (mult * 2.0d) - 1.0d : 0.0d;
-                mult = mult * saturation;
-                value = value + mult > 1 ? 1 : value + mult;
-                
             } else if(max == newGreen)
             {
                 hue = 60 * (2 + (newBlue - newRed) / delta);
