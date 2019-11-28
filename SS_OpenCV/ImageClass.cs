@@ -1131,5 +1131,104 @@ namespace SS_OpenCV
 
         }
 
+
+        public static int[,] connectedComponents(Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+                MIplImage m = img.MIplImage;
+                
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+                byte* offsetPtr = dataPtr;
+                byte  color;
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+                int label = 0;
+                int[,] labels = new int[width,height];
+                
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+
+                            //retrive 3 colour components
+                            color = dataPtr[0];
+                            
+                            if (color == 0)
+                            {
+                                labels[x, y] = label;
+                                label = label + 1;
+                            }
+                            else
+                            {
+                                labels[x, y] = Int32.MaxValue;
+                            }
+
+
+                            dataPtr += nChan;
+                        }
+
+                        dataPtr += padding;
+                    }
+                    int dx, dy, rx, ry;
+                    int step = 3;
+                    
+
+                    Boolean changed = true;
+                    while (changed)
+                    {
+                        changed = false;
+                        for (y = 0; y < height; y++)
+                        {
+                            for (x = 0; x < width; x++)
+                            {
+                                for (dx = -step; dx < step + 1; dx++)
+                                {
+                                    rx = x + dx;
+                                    if (rx < 0)
+                                    {
+                                        rx = 0;
+                                    }
+                                    else if (rx >= width)
+                                    {
+                                        rx = width - 1;
+                                    }
+                                    for (dy = -step; dy < step + 1; dy++)
+                                    {
+                                        ry = y + dy;
+                                        if (ry < 0)
+                                        {
+                                            ry = 0;
+                                        }
+                                        else if (ry >= height)
+                                        {
+                                            ry = height - 1;
+                                        }
+                                        
+                                        
+                                        if (labels[rx,ry] < labels[x,y] && labels[x,y] != Int32.MaxValue)
+                                        {   
+                                            labels[x, y] = labels[rx, ry];
+                                            changed = true;
+                                        }
+                                    }
+                                }
+                              
+                            }
+
+                     
+                        }                       
+                    }
+
+                }
+                return labels;
+            }
+        }
+
     }
 }

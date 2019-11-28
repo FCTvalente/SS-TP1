@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Windows.Forms;
 using Emgu.CV;
 using Emgu.CV.Structure;
@@ -417,6 +418,11 @@ namespace SS_OpenCV
             imgUndo = img.Copy();
 
             ImageClass.RGBtoHSVPrime(img);
+            ImageClass.ConvertToOneComponent(img,"green");
+            //ImageClass.Negative(img);
+            ImageClass.ConvertToBW_Otsu(img);
+            int[,] labels;
+            labels = ImageClass.connectedComponents(img);
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
