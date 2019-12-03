@@ -1213,7 +1213,11 @@ namespace SS_OpenCV
         {
             unsafe
             {
+               
+                Mean(img, img.Copy());
+                
                 MIplImage m = img.MIplImage;
+
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
                 byte blue, green, red;
 
