@@ -176,17 +176,17 @@ namespace SS_OpenCV
             InputBox xform = new InputBox("X offset");
             xform.ShowDialog();
 
-            double xoffset = Convert.ToDouble(xform.ValueTextBox.Text);
+            int xoffset = Convert.ToInt32(xform.ValueTextBox.Text);
 
             InputBox yform = new InputBox("Y offset");
             yform.ShowDialog();
 
-            double yoffset = Convert.ToDouble(yform.ValueTextBox.Text);
+            int yoffset = Convert.ToInt32(yform.ValueTextBox.Text);
             
             //copy Undo Image
             imgUndo = img.Copy();
 
-            ImageClass.Translate(img, img.Copy(), xoffset, yoffset);
+            ImageClass.Translation(img, img.Copy(), xoffset, yoffset);
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
@@ -206,9 +206,9 @@ namespace SS_OpenCV
             InputBox yform = new InputBox("Angle");
             yform.ShowDialog();
 
-            double angle = Convert.ToDouble(yform.ValueTextBox.Text);
+            float angle = (float)Convert.ToDouble(yform.ValueTextBox.Text);
 
-            ImageClass.Rotate(img, img.Copy(), angle);
+            ImageClass.Rotation(img, img.Copy(), angle);
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
@@ -245,20 +245,17 @@ namespace SS_OpenCV
             WeightMatrix matrixform = new WeightMatrix();
             matrixform.ShowDialog();
 
-            float[][] matrix = new float[3][];
-            matrix[0] = new float[3];
-            matrix[1] = new float[3];
-            matrix[2] = new float[3];
+            float[,] matrix = new float[3,3];
 
-            matrix[0][0] = (float)Convert.ToDouble(matrixform.TopLeft.Text);
-            matrix[1][0] = (float)Convert.ToDouble(matrixform.TopMiddle.Text);
-            matrix[2][0] = (float)Convert.ToDouble(matrixform.TopRight.Text);
-            matrix[0][1] = (float)Convert.ToDouble(matrixform.MiddleLeft.Text);
-            matrix[1][1] = (float)Convert.ToDouble(matrixform.MiddleMiddle.Text);
-            matrix[2][1] = (float)Convert.ToDouble(matrixform.MiddleRight.Text);
-            matrix[0][2] = (float)Convert.ToDouble(matrixform.BottomLeft.Text);
-            matrix[1][2] = (float)Convert.ToDouble(matrixform.BottomMiddle.Text);
-            matrix[2][2] = (float)Convert.ToDouble(matrixform.BottomRight.Text);
+            matrix[0,0] = (float)Convert.ToDouble(matrixform.TopLeft.Text);
+            matrix[1,0] = (float)Convert.ToDouble(matrixform.TopMiddle.Text);
+            matrix[2,0] = (float)Convert.ToDouble(matrixform.TopRight.Text);
+            matrix[0,1] = (float)Convert.ToDouble(matrixform.MiddleLeft.Text);
+            matrix[1,1] = (float)Convert.ToDouble(matrixform.MiddleMiddle.Text);
+            matrix[2,1] = (float)Convert.ToDouble(matrixform.MiddleRight.Text);
+            matrix[0,2] = (float)Convert.ToDouble(matrixform.BottomLeft.Text);
+            matrix[1,2] = (float)Convert.ToDouble(matrixform.BottomMiddle.Text);
+            matrix[2,2] = (float)Convert.ToDouble(matrixform.BottomRight.Text);
 
             float weight = (float)Convert.ToDouble(matrixform.Weight.Text);
 
@@ -349,7 +346,7 @@ namespace SS_OpenCV
 
             int threshold = Convert.ToInt32(yform.ValueTextBox.Text);
 
-            ImageClass.Binarization(img, threshold);
+            ImageClass.ConvertToBW(img, threshold);
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
@@ -418,9 +415,6 @@ namespace SS_OpenCV
             imgUndo = img.Copy();
 
             ImageClass.RGBtoHSVPrime(img);
-            ImageClass.ConvertToOneComponent(img,"green");
-            //ImageClass.Negative(img);
-            ImageClass.ConvertToBW_Otsu(img);
             int[,] labels;
             labels = ImageClass.connectedComponents(img);
 
