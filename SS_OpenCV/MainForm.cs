@@ -413,10 +413,11 @@ namespace SS_OpenCV
 
             //copy Undo Image
             imgUndo = img.Copy();
-
+            
             ImageClass.RGBtoHSVPrime(img);
             int[,] labels;
-            labels = ImageClass.connectedComponents(img);
+               
+            labels = ImageClass.connectedComponents(img);  //para testar connected components meter a mean no metodo RGBtoHSVPrime em comentario
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen

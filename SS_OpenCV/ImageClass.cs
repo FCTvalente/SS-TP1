@@ -1485,21 +1485,19 @@ namespace SS_OpenCV
                 
                 if (nChan == 3) // image in RGB
                 {
-                    for (y = 0; y < height; y++)
+                    for (x = 0; x < width; x++)
                     {
-                        for (x = 0; x < width; x++)
+                        for (y = 0; y < height; y++)
                         {
 
                             //retrive 3 colour components
                             color = dataPtr[0];
                             
-                            if (color == 0)
+                            if (color == 255)
                             {
                                 labels[x, y] = label;
                                 label = label + 1;
-                            }
-                            else
-                            {
+                            }else{
                                 labels[x, y] = Int32.MaxValue;
                             }
 
@@ -1510,16 +1508,16 @@ namespace SS_OpenCV
                         dataPtr += padding;
                     }
                     int dx, dy, rx, ry;
-                    int step = 3;
+                    int step = 1;
                     
 
                     Boolean changed = true;
                     while (changed)
                     {
                         changed = false;
-                        for (y = 0; y < height; y++)
+                        for (x = 0; x < width; x++)
                         {
-                            for (x = 0; x < width; x++)
+                            for (y = 0; y < height; y++)
                             {
                                 for (dx = -step; dx < step + 1; dx++)
                                 {
