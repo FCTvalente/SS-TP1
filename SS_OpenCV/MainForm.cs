@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Windows.Forms;
 using Emgu.CV;
 using Emgu.CV.Structure;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace SS_OpenCV
 { 
@@ -418,6 +420,20 @@ namespace SS_OpenCV
             int[,] labels;
                
             labels = ImageClass.connectedComponents(img);  //para testar connected components meter a mean no metodo RGBtoHSVPrime em comentario
+
+            HashSet<int> unique = new HashSet<int>();
+
+            Dictionary<int, int> duplicates = new Dictionary<int, int>();
+
+            foreach (var item in labels)
+                if (!unique.Add(item))
+                    if (duplicates.TryGetValue(item, out int count))
+                        duplicates[item] = count + 1;
+                    else
+                        duplicates[item] = 2;
+
+            foreach (var item in duplicates)
+                Console.WriteLine($"{item.Key} appears {item.Value} times");
 
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
