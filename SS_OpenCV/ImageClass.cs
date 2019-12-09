@@ -779,7 +779,6 @@ namespace SS_OpenCV
 
         public static void Median(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy)
         {
-            //imgCopy.SmoothMedian(3).CopyTo(img);
             unsafe
             {
                 int range = 3;
@@ -1243,7 +1242,7 @@ namespace SS_OpenCV
                             red = dataPtr[2];
 
                             prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
-                            if(((prevHSV[0] < 25 && prevHSV[0] >= 0) || prevHSV[0] > 325) && prevHSV[1] > .35d && prevHSV[2] > .20d)
+                            if(((prevHSV[0] < 20 && prevHSV[0] >= 0) || prevHSV[0] > 325) && prevHSV[1] > .35d && prevHSV[2] > .20d)
                             {
                                 prevHSV[2] = 1;
                             } else
@@ -1272,6 +1271,127 @@ namespace SS_OpenCV
 
             }
             RedChannel(img);
+        }
+
+        public static List<Image<Bgr, byte>> HVProjections(Image<Bgr, byte> img, out int[,] coords)
+        {
+            unsafe
+            {
+                coords = null;
+                List<Image<Bgr, byte>> res = new List<Image<Bgr, byte>>();
+                Stack<Image<Bgr, byte>> toExamine = new Stack<Image<Bgr, byte>>();
+                Image<Bgr, byte> cur;
+                toExamine.Push(img);
+                
+                MIplImage m;
+                byte* dataPtr;
+
+                int width;
+                int height;
+                int nChan;
+                int padding;
+                int x, y, start;
+                bool[] lines, cols;
+                int[] t1, t2;
+                List<int[]> fy = new List<int[]>();
+                List<int[]> fx = new List<int[]>();
+
+                while (toExamine.Count != 0)
+                {
+                    cur = toExamine.Pop();
+                    m = cur.MIplImage;
+                    dataPtr = (byte*)m.imageData.ToPointer();
+                    width = cur.Width;
+                    height = cur.Height;
+                    nChan = m.nChannels;
+                    padding = m.widthStep - m.nChannels * m.width;
+
+                    lines = new bool[height];
+                    cols = new bool[width];
+                    fy.Clear();
+                    fx.Clear();
+
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            if(dataPtr[0] != 0)
+                            {
+                                lines[y] = true;
+                                cols[x] = true;
+                            }
+
+                            // advance the pointer to the next pixel
+                            dataPtr += nChan;
+                        }
+                        //at the end of the line advance the pointer by the aligment bytes (padding)
+                        dataPtr += padding;
+                    }
+                    start = -1;
+                    for(y = 0; y < height; y++)
+                    {
+                        if(start == -1)
+                        {
+                            if(lines[y])
+                            {
+                                start = y;
+                            }
+                        } else
+                        {
+                            if(!lines[y])
+                            {
+                                fy.Add(new int[] { start, y });
+                                start = -1;
+                            }
+                        }
+                    }
+                    if(start != -1)
+                    {
+                        fy.Add(new int[] { start, height });
+                    }
+                    start = -1;
+                    for (x = 0; x < width; x++)
+                    {
+                        if (start == -1)
+                        {
+                            if (lines[x])
+                            {
+                                start = x;
+                            }
+                        }
+                        else
+                        {
+                            if (!lines[x])
+                            {
+                                fx.Add(new int[] { start, x });
+                                start = -1;
+                            }
+                        }
+                    }
+                    if (start != -1)
+                    {
+                        fx.Add(new int[] { start, width });
+                    }
+
+                    if(fx.Count ==  0 && fy.Count == 0)
+                    {
+                        continue;
+                    }
+                    if (fx.Count == 1 && fy.Count == 1)
+                    {
+                        t1 = fx[0];
+                        t2 = fx[0];
+                        if((t1[1] - t1[0]) == width && (t2[1] - t2[0]) == height)
+                        {
+                            res.Add(cur);
+                            continue;
+                        }
+                    }
+
+                    //TODO: divide image
+                }
+                return res;
+            }
         }
 
         public static double[] IntensifyRed(double red, double blue, double green)
@@ -1473,7 +1593,6 @@ namespace SS_OpenCV
                 MIplImage m = img.MIplImage;
                 
                 byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte* offsetPtr = dataPtr;
                 byte  color;
                 int width = img.Width;
                 int height = img.Height;
