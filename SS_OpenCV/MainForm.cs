@@ -457,6 +457,56 @@ namespace SS_OpenCV
 
             Cursor = Cursors.Default; // normal cursor 
         }
+
+        private void ZoomToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (img == null) // verify if the image is already opened
+                return;
+            Cursor = Cursors.WaitCursor; // clock cursor 
+
+            //copy Undo Image
+            imgUndo = img.Copy();
+
+            InputBox yform = new InputBox("Angle");
+            yform.ShowDialog();
+
+            float angle = (float)Convert.ToDouble(yform.ValueTextBox.Text);
+
+            ImageClass.Scale(img, img.Copy(), angle);
+
+            ImageViewer.Image = img.Bitmap;
+            ImageViewer.Refresh(); // refresh image on the screen
+
+            Cursor = Cursors.Default; // normal cursor 
+        }
+
+        private void ZoomPointToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (img == null) // verify if the image is already opened
+                return;
+            Cursor = Cursors.WaitCursor; // clock cursor 
+
+            //copy Undo Image
+            imgUndo = img.Copy();
+
+            InputBox yform = new InputBox("Angle");
+            yform.ShowDialog();
+
+            float angle = (float)Convert.ToDouble(yform.ValueTextBox.Text);
+
+            zoomPoint centerform = new zoomPoint();
+            centerform.ShowDialog();
+
+            int x = (int)Convert.ToDouble(centerform.xValue.Text);
+            int y = (int)Convert.ToDouble(centerform.yValue.Text);
+
+            ImageClass.Scale_point_xy(img, img.Copy(), angle, x, y);
+
+            ImageViewer.Image = img.Bitmap;
+            ImageViewer.Refresh(); // refresh image on the screen
+
+            Cursor = Cursors.Default; // normal cursor 
+        }
     }
 
 
