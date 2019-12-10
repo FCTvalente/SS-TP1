@@ -418,7 +418,7 @@ namespace SS_OpenCV
             
             ImageClass.RGBtoHSVPrime(img);
             int[,] labels;
-               
+            /*
             labels = ImageClass.connectedComponents(img);  //para testar connected components meter a mean no metodo RGBtoHSVPrime em comentario
 
             HashSet<int> unique = new HashSet<int>();
@@ -434,7 +434,7 @@ namespace SS_OpenCV
 
             foreach (var item in duplicates)
                 Console.WriteLine($"{item.Key} appears {item.Value} times");
-
+            */
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
 

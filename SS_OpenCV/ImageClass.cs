@@ -1213,11 +1213,12 @@ namespace SS_OpenCV
             unsafe
             {
                
-                Mean(img, img.Copy());
+                //Mean(img, img.Copy());
                 
                 MIplImage m = img.MIplImage;
 
-                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+                byte* startPtr = (byte*)m.imageData.ToPointer();
+                byte* dataPtr = startPtr;
                 byte blue, green, red;
 
                 int width = img.Width;
@@ -1269,66 +1270,103 @@ namespace SS_OpenCV
                     }
                 }
 
+                RedChannel(img);
+
+                List<int[]> test = HVProjections(img);
+                for(int i = 0; i < test.Count; i++)
+                {
+                    int[] a = test[i];
+                    int min = Math.Min((a[2] - a[0]), (a[3] - a[1]));
+                    if(min < 50)
+                    {
+                        test.Remove(a);
+                        i--;
+                    }
+                }
+                foreach(int[] t in test)
+                {
+                    for(y = t[1]; y < t[3]; y++)
+                    {
+                        x = t[0];
+                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+
+                        dataPtr[0] = 255;
+                        dataPtr[1] = 0;
+                        dataPtr[2] = 255;
+
+                        x = t[2] - 1;
+                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+
+                        dataPtr[0] = 255;
+                        dataPtr[1] = 0;
+                        dataPtr[2] = 255;
+                    }
+                    for (x = t[0]; x < t[2]; x++)
+                    {
+                        y = t[1];
+                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+
+                        dataPtr[0] = 255;
+                        dataPtr[1] = 0;
+                        dataPtr[2] = 255;
+
+                        y = t[3] - 1;
+                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+
+                        dataPtr[0] = 255;
+                        dataPtr[1] = 0;
+                        dataPtr[2] = 255;
+                    }
+                }
             }
-            RedChannel(img);
         }
 
-        public static List<Image<Bgr, byte>> HVProjections(Image<Bgr, byte> img, out int[,] coords)
+        public static List<int[]> HVProjections(Image<Bgr, byte> img)
         {
             unsafe
             {
-                coords = null;
-                List<Image<Bgr, byte>> res = new List<Image<Bgr, byte>>();
-                Stack<Image<Bgr, byte>> toExamine = new Stack<Image<Bgr, byte>>();
-                Image<Bgr, byte> cur;
-                toExamine.Push(img);
+                List<int[]> coords = new List<int[]>();
+                Stack<int[]> toExamine = new Stack<int[]>();
                 
-                MIplImage m;
+                MIplImage m = img.MIplImage;
+                byte* startPtr = (byte*)m.imageData.ToPointer();
                 byte* dataPtr;
 
-                int width;
-                int height;
-                int nChan;
-                int padding;
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+
                 int x, y, start;
                 bool[] lines, cols;
-                int[] t1, t2;
+                int[] cur, t1, t2;
                 List<int[]> fy = new List<int[]>();
                 List<int[]> fx = new List<int[]>();
 
+                toExamine.Push(new int[] { 0, 0, width, height });
                 while (toExamine.Count != 0)
                 {
                     cur = toExamine.Pop();
-                    m = cur.MIplImage;
-                    dataPtr = (byte*)m.imageData.ToPointer();
-                    width = cur.Width;
-                    height = cur.Height;
-                    nChan = m.nChannels;
-                    padding = m.widthStep - m.nChannels * m.width;
 
-                    lines = new bool[height];
-                    cols = new bool[width];
+                    lines = new bool[cur[3] - cur[1]];
+                    cols = new bool[cur[2] - cur[0]];
                     fy.Clear();
                     fx.Clear();
 
-                    for (y = 0; y < height; y++)
+                    for (y = cur[1]; y < cur[3]; y++)
                     {
-                        for (x = 0; x < width; x++)
+                        for (x = cur[0]; x < cur[2]; x++)
                         {
-                            if(dataPtr[0] != 0)
+                            dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+                            if (dataPtr[0] != 0)
                             {
-                                lines[y] = true;
-                                cols[x] = true;
+                                lines[y - cur[1]] = true;
+                                cols[x - cur[0]] = true;
                             }
-
-                            // advance the pointer to the next pixel
-                            dataPtr += nChan;
                         }
-                        //at the end of the line advance the pointer by the aligment bytes (padding)
-                        dataPtr += padding;
                     }
                     start = -1;
-                    for(y = 0; y < height; y++)
+                    for(y = 0; y < cur[3] - cur[1]; y++)
                     {
                         if(start == -1)
                         {
@@ -1340,37 +1378,37 @@ namespace SS_OpenCV
                         {
                             if(!lines[y])
                             {
-                                fy.Add(new int[] { start, y });
+                                fy.Add(new int[] { start + cur[1], y + cur[1] });
                                 start = -1;
                             }
                         }
                     }
                     if(start != -1)
                     {
-                        fy.Add(new int[] { start, height });
+                        fy.Add(new int[] { start + cur[1], cur[3] });
                     }
                     start = -1;
-                    for (x = 0; x < width; x++)
+                    for (x = 0; x < cur[2] - cur[0]; x++)
                     {
                         if (start == -1)
                         {
-                            if (lines[x])
+                            if (cols[x])
                             {
                                 start = x;
                             }
                         }
                         else
                         {
-                            if (!lines[x])
+                            if (!cols[x])
                             {
-                                fx.Add(new int[] { start, x });
+                                fx.Add(new int[] { start + cur[0], x + cur[0] });
                                 start = -1;
                             }
                         }
                     }
                     if (start != -1)
                     {
-                        fx.Add(new int[] { start, width });
+                        fx.Add(new int[] { start + cur[0], cur[2] });
                     }
 
                     if(fx.Count ==  0 && fy.Count == 0)
@@ -1380,17 +1418,26 @@ namespace SS_OpenCV
                     if (fx.Count == 1 && fy.Count == 1)
                     {
                         t1 = fx[0];
-                        t2 = fx[0];
-                        if((t1[1] - t1[0]) == width && (t2[1] - t2[0]) == height)
+                        t2 = fy[0];
+                        if((t1[1] - t1[0]) == (cur[2] - cur[0]) && (t2[1] - t2[0]) == (cur[3] - cur[1]))
                         {
-                            res.Add(cur);
+                            coords.Add(cur); //
                             continue;
                         }
                     }
 
                     //TODO: divide image
+                    for(y = 0; y < fy.Count; y++)
+                    {
+                        t1 = fy[y];
+                        for(x = 0; x < fx.Count; x++)
+                        {
+                            t2 = fx[x];
+                            toExamine.Push(new int[] { t2[0], t1[0], t2[1], t1[1] });
+                        }
+                    }
                 }
-                return res;
+                return coords;
             }
         }
 
