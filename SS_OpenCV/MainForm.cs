@@ -415,8 +415,11 @@ namespace SS_OpenCV
 
             //copy Undo Image
             imgUndo = img.Copy();
-            
-            ImageClass.RGBtoHSVPrime(img);
+
+            List<string[]> limitSign;
+            List<string[]> warningSign;
+            List<string[]> prohibitionSign;
+            ImageClass.Signs(img, img.Copy(), out limitSign, out warningSign, out prohibitionSign, 0);
             int[,] labels;
             /*
             labels = ImageClass.connectedComponents(img);  //para testar connected components meter a mean no metodo RGBtoHSVPrime em comentario
