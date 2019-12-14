@@ -1242,15 +1242,15 @@ namespace SS_OpenCV
             List<int[]> found = new List<int[]>();
             List<bool[,]> subs, matrixes, nums;
             HVProjections(imgCopy, minSize, out coords, out subs);
-
-            for(i = 0; i < coords.Count; i++)
+            System.Diagnostics.Debug.WriteLine("NEW IMAGE ANALYSIS");
+            for (i = 0; i < coords.Count; i++)
             {
                 ConnectedComponents(subs[i], minSize, minRatio, out subcoords, out matrixes, out areas);
                 for(j = 0; j < subcoords.Count; j++)
                 {
                     t = subcoords[j];
                     per = Perimeter(matrixes[j]);
-                    formFact = (Math.PI * 4d * areas[j]) / (per * per);
+                    formFact = (Math.PI * 4d * areas[j]) / (per * per); System.Diagnostics.Debug.WriteLine(formFact);
                     a = new int[]
                     {
                         t[0] + coords[i][0],
@@ -1273,18 +1273,18 @@ namespace SS_OpenCV
                             fx = (int)((a[2] - a[0]) / 6f);
                             fy = (int)((a[3] - a[1]) / 3.5f);
                             ConnectedComponents(OtsuBinary(Crop(img, new int[] { a[0] + fx, a[1] + fy, a[2] - fx, a[3] - fy })), 5, 0f, out ncoords, out nums, out nareas);
-                            value = GetValue(nums, nareas, 0.8f);
+                            value = GetValue(nums, nareas, 0.58f);
                             if(value == -1)
                             {
-                                prohibitionSign.Add(s);
+                                prohibitionSign.Add(s); System.Diagnostics.Debug.WriteLine("Prohibition sign");
                             } else
                             {
                                 s[0] = value.ToString();
-                                limitSign.Add(s);
+                                limitSign.Add(s); System.Diagnostics.Debug.WriteLine("Limit sign: " + value);
                             }
                         } else if(shape == 1)
                         {
-                            warningSign.Add(s);
+                            warningSign.Add(s); System.Diagnostics.Debug.WriteLine("Warning sign");
                         } else
                         {
                             continue;
@@ -2118,15 +2118,27 @@ namespace SS_OpenCV
                         for(y = 0; y < height; y++)
                         {
                             ny = (int)Math.Floor((y / (float)height) * nheight);
-                            if (curr[x, y] && cnum[nx, ny])
+                            //if (curr[x, y] && cnum[nx, ny])
+                            //{
+                            //    count++;
+                            //}
+                            if(curr[x, y] == cnum[nx, ny])
                             {
                                 count++;
+                            } else
+                            {
+                                count--;
                             }
                         }
                     }
-                    if(maxLikeness < count / (float)areas[i])
+                    //if(maxLikeness < count / (float)areas[i])
+                    //{
+                    //    maxLikeness = count / (float)areas[i];
+                    //    maxLikeVal = j;
+                    //}
+                    if (maxLikeness < count / (float)(width * height))
                     {
-                        maxLikeness = count / (float)areas[i];
+                        maxLikeness = count / (float)(width * height);
                         maxLikeVal = j;
                     }
                 }
@@ -2136,9 +2148,8 @@ namespace SS_OpenCV
                 }
                 res += mult * maxLikeVal;
                 mult /= 10;
-                System.Diagnostics.Debug.WriteLine(maxLikeness); 
+                //System.Diagnostics.Debug.WriteLine(maxLikeness); 
             }
-            System.Diagnostics.Debug.WriteLine(res);
             return res;
         }
 
