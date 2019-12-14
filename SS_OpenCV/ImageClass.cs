@@ -10,6 +10,8 @@ namespace SS_OpenCV
     class ImageClass
     {
 
+        static readonly List<bool[,]> digits = Digits();
+
         /// <summary>
         /// Image Negative using EmguCV library
         /// Slower method
@@ -1221,29 +1223,34 @@ namespace SS_OpenCV
         public static Image<Bgr, byte> Signs(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, out List<string[]> limitSign, out List<string[]> warningSign, out List<string[]> prohibitionSign, int level)
         {
             byte[] colour = { 50, 0, 255 };
-            int i;
+            int i, j, value, shape;
             int minSize = 50;
-            int[] a;
-            limitSign = null;
-            warningSign = null;
-            prohibitionSign = null;
+            float minRatio = .60f;
+            double formFact, per;
+            int[] t, a;
+            string[] s;
+            limitSign = new List<string[]>();
+            warningSign = new List<string[]>();
+            prohibitionSign = new List<string[]>();
             //Mean(imgCopy, img);
             RedImage(imgCopy);
             RedChannel(imgCopy);
-            List<int[]> coords, cc;
-            List<bool[,]> subs;
+            //BlackImage(img);
+            ConvertToGray(img); ConvertToBW_Otsu(img); //try cropping image and then otsu
+            List<int> areas;
+            List<int[]> coords, subcoords;
             List<int[]> found = new List<int[]>();
+            List<bool[,]> subs, matrixes;
             HVProjections(imgCopy, minSize, out coords, out subs);
 
             for(i = 0; i < coords.Count; i++)
             {
-                cc = ConnectedComponents(subs[i]);
-                foreach(int[] t in cc)
+                ConnectedComponents(subs[i], minSize, minRatio, out subcoords, out matrixes, out areas);
+                for(j = 0; j < subcoords.Count; j++)
                 {
-                    if((t[2] - t[0]) < minSize || (t[3] - t[1]) < minSize)
-                    {
-                        continue;
-                    }
+                    t = subcoords[j];
+                    per = Perimeter(matrixes[j]);
+                    formFact = (Math.PI * 4d * areas[j]) / (per * per);
                     a = new int[]
                     {
                         t[0] + coords[i][0],
@@ -1251,7 +1258,28 @@ namespace SS_OpenCV
                         t[2] + coords[i][0],
                         t[3] + coords[i][1]
                     };
-                    found.Add(a);
+                    if (formFact > 0.08d && formFact < 0.5d)
+                    {
+                        s = new string[] {
+                            "-1",
+                            a[0].ToString(),
+                            a[1].ToString(),
+                            a[2].ToString(),
+                            a[3].ToString()
+                        };
+                        shape = Shape(matrixes[j], 0.15f);
+                        if (shape == 0)
+                        {
+
+                        } else if(shape == 1)
+                        {
+                            warningSign.Add(s);
+                        } else
+                        {
+                            continue;
+                        }
+                        found.Add(a);
+                    }
                 }
             }
             
@@ -1268,11 +1296,11 @@ namespace SS_OpenCV
                 int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
                 int x, y;
 
-                foreach(int[] t in found)
+                foreach(int[] c in found)
                 {
-                    for (y = t[1] - 1; y < t[3] + 1; y++)
+                    for (y = c[1] - 1; y < c[3] + 1; y++)
                     {
-                        x = t[0] - 1;
+                        x = c[0] - 1;
                         dataPtr = startPtr + y * padding + (y * width + x) * nChan;
                         dataPtr[0] = colour[0];
                         dataPtr[1] = colour[1];
@@ -1289,9 +1317,9 @@ namespace SS_OpenCV
                         dataPtr[2] = colour[2];
                     }
 
-                    for (y = t[1] - 1; y < t[3] + 1; y++)
+                    for (y = c[1] - 1; y < c[3] + 1; y++)
                     {
-                        x = t[2] - 2;
+                        x = c[2] - 2;
                         dataPtr = startPtr + y * padding + (y * width + x) * nChan;
                         dataPtr[0] = colour[0];
                         dataPtr[1] = colour[1];
@@ -1308,9 +1336,9 @@ namespace SS_OpenCV
                         dataPtr[2] = colour[2];
                     }
 
-                    for(x = t[0] + 2; x < t[2] - 2; x++)
+                    for(x = c[0] + 2; x < c[2] - 2; x++)
                     {
-                        y = t[1] - 1;
+                        y = c[1] - 1;
                         dataPtr = startPtr + y * padding + (y * width + x) * nChan;
                         dataPtr[0] = colour[0];
                         dataPtr[1] = colour[1];
@@ -1327,9 +1355,9 @@ namespace SS_OpenCV
                         dataPtr[2] = colour[2];
                     }
 
-                    for (x = t[0] + 2; x < t[2] - 2; x++)
+                    for (x = c[0] + 2; x < c[2] - 2; x++)
                     {
-                        y = t[3] - 2;
+                        y = c[3] - 2;
                         dataPtr = startPtr + y * padding + (y * width + x) * nChan;
                         dataPtr[0] = colour[0];
                         dataPtr[1] = colour[1];
@@ -1350,7 +1378,7 @@ namespace SS_OpenCV
             }
         }
 
-        public static void HVProjections(Image<Bgr, byte> img, int minreq, out List<int[]> coords, out List<bool[,]> subs)
+        public static void HVProjections(Image<Bgr, byte> img, int minSize, out List<int[]> coords, out List<bool[,]> subs)
         {
             unsafe
             {
@@ -1473,7 +1501,7 @@ namespace SS_OpenCV
                     {
                         t1 = fx[0];
                         t2 = fy[0];
-                        if((t1[1] - t1[0]) == (cur[2] - cur[0]) && (t2[1] - t2[0]) == (cur[3] - cur[1]))
+                        if ((t1[1] - t1[0]) == (cur[2] - cur[0]) && (t2[1] - t2[0]) == (cur[3] - cur[1]))
                         {
                             coords.Add(cur);
                             subs.Add(i);
@@ -1483,14 +1511,14 @@ namespace SS_OpenCV
                     for(y = 0; y < fy.Count; y++)
                     {
                         t1 = fy[y];
-                        if(t1[1] - t1[0] < minreq)
+                        if(t1[1] - t1[0] < minSize)
                         {
                             continue;
                         }
                         for(x = 0; x < fx.Count; x++)
                         {
                             t2 = fx[x];
-                            if(t2[1] - t2[0] < minreq)
+                            if(t2[1] - t2[0] < minSize)
                             {
                                 continue;
                             }
@@ -1501,150 +1529,6 @@ namespace SS_OpenCV
             }
         }
 
-        public static List<bool[,]> VProjection(bool[,] img)
-        {
-            bool[] proj = new bool[img.GetLength(0)];
-            List<int[]> obj = new List<int[]>();
-            List<bool[,]> res = new List<bool[,]>();
-            bool[,] t;
-            int x, y, start;
-            for(y = 0; y < img.GetLength(1); y++)
-            {
-                for(x = 0; x < img.GetLength(0); x++)
-                {
-                    proj[x] = img[x, y];
-                }
-            }
-            start = -1;
-            for(x = 0; x < img.GetLength(0); x++)
-            {
-                if (start == -1)
-                {
-                    if (proj[x])
-                    {
-                        start = x;
-                    }
-                }
-                else
-                {
-                    if (!proj[x])
-                    {
-                        obj.Add(new int[] { start, x });
-                        start = -1;
-                    }
-                }
-            }
-            foreach (int[] o in obj)
-            {
-                t = new bool[o[1] - o[0], img.GetLength(1)];
-                for (y = 0; y < img.GetLength(1); y++)
-                {
-                    for (x = o[0]; x < o[1]; x++)
-                    {
-                        t[x - o[0], y] = img[x, y];
-                    }
-                }
-                res.Add(t);
-            }
-            return res;
-        }
-
-        /*
-        public static double[] RedPixel(double red, double blue, double green)
-        {
-            double newRed = red / 255;
-            double newBlue = blue / 255;
-            double newGreen = green / 255;
-
-            double min = Math.Min(Math.Min(newRed, newGreen), newBlue);
-            double max = Math.Max(Math.Max(newRed, newGreen), newBlue);
-
-            double delta = max - min;
-
-            double saturation;
-
-            if (max == 0)
-            {
-                saturation = 0;
-            }
-            else
-            {
-                saturation = delta / max;
-            }
-
-            double value = 0;
-
-            double hue = 180;
-
-            if (delta != 0)
-            {
-                if (max == newRed)
-                {
-                    /*
-                    value = max;
-                    hue = 60 * (0 + (newGreen - newBlue) / delta);
-                    hue = hue < 0 ? hue + 360 : hue;
-                    double mult = hue <= 60.0d && hue >= 0.0d ? (60.0d - hue) / 60.0d : (hue - 300.0d) / 60.0d;
-                    mult = mult > .5d ? (mult * 2.0d) - 1.0d : 0.0d;
-                    mult = (mult + .3d) * (saturation * 2 - 1) * 2;
-                    value = value + mult > 1 ? 1 : value + mult;
-                    value = value > 0 ? value : 0;
-                    value = saturation < .5d ? saturation : value;
-                    //
-                    value = max;
-                    hue = 60 * (0 + (newGreen - newBlue) / delta);
-                    hue = hue < 0 ? hue + 360 : hue;
-                    double add = hue >= 300 ? 1 - ((hue - 300) / 60) : 0;
-                    add = add * (saturation * 2 - 0);
-                    value = value + add > 1 ? 1 : value + add;
-                    value = value < 0 ? 0 : value;
-                    value = saturation < .5d ? saturation : value;
-                }
-                else if (max == newBlue)
-                {
-                    value = max;
-                    hue = 60 * (4 + (newRed - newGreen) / delta);
-                    double add = hue >= 240 ? (hue - 240) / 60 : 0;
-                    add = add * (saturation * 2 - 1);
-                    value = value + add > 1 ? 1 : value + add;
-                    value = value < 0 ? 0 : value;
-                    value = saturation < .5d ? saturation : value;
-                }
-            }
-            value = (hue <= 60 && hue > 0) || (hue <= 360 && hue > 240) ? value : 0;
-            double c = 0f, hueNewValue = 0f, x = 0f, m = 0f;
-            double[] prevRGB = new double[3];
-
-            c = value * saturation;
-            hueNewValue = hue / 60;
-            x = c * (1 - Math.Abs(hueNewValue % 2 - 1));
-
-            m = value - c;
-
-            if (0 <= hue && hue <= 60)
-            {
-                prevRGB[0] = c; prevRGB[1] = x; prevRGB[2] = 0;
-            }
-            else if (240 < hue && hue <= 300)
-            {
-                prevRGB[0] = x; prevRGB[1] = 0; prevRGB[2] = c;
-            }
-            else if (300 < hue && hue <= 360)
-            {
-                prevRGB[0] = c; prevRGB[1] = 0; prevRGB[2] = x;
-            }
-            else
-            {
-                prevRGB[0] = 0; prevRGB[1] = 0; prevRGB[2] = 0; m = 0;
-            }
-
-            prevRGB[0] = (prevRGB[0] + m) * 255;
-            prevRGB[1] = (prevRGB[1] + m) * 255;
-            prevRGB[2] = (prevRGB[2] + m) * 255;
-
-            return prevRGB;
-        }
-        */
         public static double[] RGBtoHSV(double red, double blue, double green)
         {
             double[] HSV = new double[3];
@@ -1801,112 +1685,23 @@ namespace SS_OpenCV
                 }
             }
         }
-        /*
-        public static int[,] ConnectedComponents2(Image<Bgr, byte> img)
+
+        public static void ConnectedComponents(bool[,] img, int minSize, float minRatio, out List<int[]> coords, out List<bool[,]> matrixes, out List<int> areas)
         {
-            unsafe
-            {
-                MIplImage m = img.MIplImage;
-                
-                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-                byte  color;
-                int width = img.Width;
-                int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
-                int x, y;
-                int label = 0;
-                int[,] labels = new int[width,height];
-                
-                if (nChan == 3) // image in RGB
-                {
-                    for (x = 0; x < width; x++)
-                    {
-                        for (y = 0; y < height; y++)
-                        {
-
-                            //retrive 3 colour components
-                            color = dataPtr[0];
-                            
-                            if (color == 255)
-                            {
-                                labels[x, y] = label;
-                                label = label + 1;
-                            }else{
-                                labels[x, y] = Int32.MaxValue;
-                            }
-
-
-                            dataPtr += nChan;
-                        }
-
-                        dataPtr += padding;
-                    }
-                    int dx, dy, rx, ry;
-                    int step = 1;
-                    
-
-                    Boolean changed = true;
-                    while (changed)
-                    {
-                        changed = false;
-                        for (x = 0; x < width; x++)
-                        {
-                            for (y = 0; y < height; y++)
-                            {
-                                for (dx = -step; dx < step + 1; dx++)
-                                {
-                                    rx = x + dx;
-                                    if (rx < 0)
-                                    {
-                                        rx = 0;
-                                    }
-                                    else if (rx >= width)
-                                    {
-                                        rx = width - 1;
-                                    }
-                                    for (dy = -step; dy < step + 1; dy++)
-                                    {
-                                        ry = y + dy;
-                                        if (ry < 0)
-                                        {
-                                            ry = 0;
-                                        }
-                                        else if (ry >= height)
-                                        {
-                                            ry = height - 1;
-                                        }
-                                        
-                                        
-                                        if (labels[rx,ry] < labels[x,y] && labels[x,y] != Int32.MaxValue)
-                                        {   
-                                            labels[x, y] = labels[rx, ry];
-                                            changed = true;
-                                        }
-                                    }
-                                }
-                              
-                            }
-
-                     
-                        }                       
-                    }
-
-                }
-                return labels;
-            }
-        }
-        */
-        public static List<int[]> ConnectedComponents(bool[,] img)
-        {
-            List<int[]> res = new List<int[]>();
+            List<int[]> objects = new List<int[]>();
+            coords = new List<int[]>();
             List<int> found = new List<int>();
+            areas = new List<int>();
+            matrixes = new List<bool[,]>();
             int height = img.GetLength(1);
             int width = img.GetLength(0);
-            int x, y, label, dx, dy, rx, ry, i;
+            int x, y, label, dx, dy, rx, ry, i, area;
             int[] t;
             int[,] labels = new int[width, height];
+            bool[,] mat;
+            bool flip = false;
             bool changed = true;
+            float ratio;
 
             label = 0;
             for (y = 0; y < height; y++)
@@ -1928,41 +1723,84 @@ namespace SS_OpenCV
             while (changed)
             {
                 changed = false;
-                for (x = 0; x < width; x++)
+                if(flip)
                 {
-                    for (y = 0; y < height; y++)
+                    for (x = width - 1; x > -1; x--)
                     {
-                        for (dx = -1; dx < 2; dx++)
+                        for (y = height - 1; y > -1; y--)
                         {
-                            rx = x + dx;
-                            if (rx < 0)
+                            for (dx = -1; dx < 2; dx++)
                             {
-                                rx = 0;
-                            }
-                            else if (rx >= width)
-                            {
-                                rx = width - 1;
-                            }
-                            for (dy = -1; dy < 2; dy++)
-                            {
-                                ry = y + dy;
-                                if (ry < 0)
+                                rx = x + dx;
+                                if (rx < 0)
                                 {
-                                    ry = 0;
+                                    continue;
                                 }
-                                else if (ry >= height)
+                                else if (rx >= width)
                                 {
-                                    ry = height - 1;
+                                    continue;
                                 }
+                                for (dy = -1; dy < 2; dy++)
+                                {
+                                    ry = y + dy;
+                                    if (ry < 0)
+                                    {
+                                        continue;
+                                    }
+                                    else if (ry >= height)
+                                    {
+                                        continue;
+                                    }
 
-                                if (labels[rx, ry] < labels[x, y] && labels[x, y] != int.MaxValue)
-                                {
-                                    labels[x, y] = labels[rx, ry];
-                                    changed = true;
+                                    if (labels[rx, ry] < labels[x, y] && labels[x, y] != int.MaxValue)
+                                    {
+                                        labels[x, y] = labels[rx, ry];
+                                        changed = true;
+                                    }
                                 }
                             }
                         }
                     }
+                    flip = false;
+                } else
+                {
+                    for (x = 0; x < width; x++)
+                    {
+                        for (y = 0; y < height; y++)
+                        {
+                            for (dx = -1; dx < 2; dx++)
+                            {
+                                rx = x + dx;
+                                if (rx < 0)
+                                {
+                                    continue;
+                                }
+                                else if (rx >= width)
+                                {
+                                    continue;
+                                }
+                                for (dy = -1; dy < 2; dy++)
+                                {
+                                    ry = y + dy;
+                                    if (ry < 0)
+                                    {
+                                        continue;
+                                    }
+                                    else if (ry >= height)
+                                    {
+                                        continue;
+                                    }
+
+                                    if (labels[rx, ry] < labels[x, y] && labels[x, y] != int.MaxValue)
+                                    {
+                                        labels[x, y] = labels[rx, ry];
+                                        changed = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    flip = true;
                 }
             }
 
@@ -1975,22 +1813,274 @@ namespace SS_OpenCV
                         if(found.Contains(labels[x, y]))
                         {
                             i = found.IndexOf(labels[x, y]);
-                            t = res[i];
+                            t = objects[i];
                             t[0] = x < t[0] ? x : t[0];
                             t[1] = y < t[1] ? y : t[1];
                             t[2] = x > t[2] ? x : t[2];
                             t[3] = y > t[3] ? y : t[3];
-                            res[i] = t;
+                            objects[i] = t;
                         } else
                         {
                             found.Add(labels[x, y]);
-                            res.Add(new int[] { x, y, x, y });
+                            objects.Add(new int[] { x, y, x, y });
                         }
                     }
                 }
             }
 
-            return res;
+            for(i = 0; i < objects.Count; i++) //change to classic for for the label, get sub image matrix
+            {
+                t = objects[i];
+                rx = t[2] - t[0];
+                ry = t[3] - t[1];
+                ratio = (float)Math.Min(rx, ry) / Math.Max(rx, ry);
+                if (rx < minSize || ry < minSize || ratio < minRatio)
+                {
+                    continue;
+                }
+                label = found[i];
+                area = 0;
+                mat = new bool[rx, ry];
+                for(x = t[0]; x < t[2]; x++)
+                {
+                    for(y = t[1]; y < t[3]; y++)
+                    {
+                        if(labels[x, y] == label)
+                        {
+                            mat[x - t[0], y - t[1]] = true;
+                            area++;
+                        }
+                    }
+                }
+                coords.Add(t);
+                matrixes.Add(mat);
+                areas.Add(area);
+            }
+        }
+
+        public static double Perimeter(bool[,] img)
+        {
+            int height = img.GetLength(1);
+            int width = img.GetLength(0);
+            int[] modx = new int[] { 0, 1, 1, 1, 0, -1, -1, -1 };
+            int[] mody = new int[] { -1, -1, 0, 1, 1, 1, 0, -1 };
+            int[] first;
+            int dir = 2;
+            int x = 0;
+            int y = 0;
+            double hv = 0d;
+            double d = 0d;
+            while(!img[x, y])
+            {
+                x++;
+                if(x >= width)
+                {
+                    x = 0;
+                    y++;
+                }
+            }
+            while(!img[x + modx[dir], y + mody[dir]]) {
+                dir++;
+            }
+            first = new int[] { x, y, dir };
+            if(dir % 2 == 0)
+            {
+                hv++;
+            } else
+            {
+                d++;
+            }
+            x += modx[dir];
+            y += mody[dir];
+            dir = dir - 1 > 0 ? dir - 1 : dir + 7;
+            while(x != first[0] || y != first[1] || dir != first[2])
+            {
+                if (x + modx[dir] >= 0 && x + modx[dir] < width && y + mody[dir] >= 0 && y + mody[dir] < height && img[x + modx[dir], y + mody[dir]])
+                {
+                    if (dir % 2 == 0)
+                    {
+                        hv++;
+                    }
+                    else
+                    {
+                        d++;
+                    }
+                    x += modx[dir];
+                    y += mody[dir];
+                    dir = dir - 1 >= 0 ? dir - 1 : dir + 7;
+                } else
+                {
+                    dir = dir + 1 < 8 ? dir + 1 : dir - 7;
+                }
+            }
+            return hv + d * Math.Sqrt(2); ;
+        }
+
+        public static int Shape(bool[,] img, float tolerance)
+        {
+            int height = img.GetLength(1);
+            int width = img.GetLength(0);
+            float w, z;
+            int x, y;
+            int a = -1;
+            int b = height - 1;
+            int c = -1;
+            int d = height - 1;
+            x = 1;
+            for (y = 0; y < height; y++)
+            {
+                if (img[x, y])
+                {
+                    if (a == -1)
+                    {
+                        a = y;
+                    } else
+                    {
+                        b = y;
+                    }
+                }
+            }
+            x = width - 2;
+            for (y = 0; y < height; y++)
+            {
+                if (img[x, y])
+                {
+                    if (c == -1)
+                    {
+                        c = y;
+                    } else
+                    {
+                        d = y;
+                    }
+                }
+            }
+            w = ((b + a) / 2f) / height;
+            z = ((d + c) / 2f) / height;
+            if(Math.Abs(w - z) < tolerance)
+            {
+                if(Math.Abs(0.5 - z) < tolerance) //checking if the horizontal ends are at mid height
+                {
+                    return 0;
+                }
+                if(Math.Abs(0.1 - z) < tolerance || Math.Abs(0.9 - z) < tolerance) //checking if the horizontal ends are at the top or bottom
+                {
+                    return 1;
+                }
+            }
+            return -1;
+        }
+
+        public static List<bool[,]> Digits()
+        {
+            List<bool[,]> digits = new List<bool[,]>();
+            bool[,] t;
+            Image<Bgr, byte> img;
+            MIplImage m;
+
+            int width;
+            int height;
+            int nChan;
+            int padding;
+            int x, y;
+            string prefix = "../../Resources/imagens/digitos/";
+            string sufix = ".png";
+            int i;
+            for(i = 0; i < 10; i++)
+            {
+                img = new Image<Bgr, byte>(prefix + i + sufix);
+                Negative(img);
+                ConvertToBW_Otsu(img);
+
+                unsafe
+                {
+                    m = img.MIplImage;
+                    byte* dataPtr = (byte*)m.imageData.ToPointer();
+                    width = img.Width;
+                    height = img.Height;
+                    nChan = m.nChannels;
+                    padding = m.widthStep - m.nChannels * m.width;
+
+                    t = new bool[width, height];
+                    for(y = 0; y < height; y++)
+                    {
+                        for(x = 0; x < width; x++)
+                        {
+                            t[x, y] = dataPtr[0] != 0;
+                            dataPtr += nChan;
+                        }
+                        dataPtr += padding;
+                    }
+                    digits.Add(t);
+                }
+            }
+            return digits;
+        }
+
+        public static int GetValue(List<bool[,]> components)
+        {
+            return -1;
+        }
+
+        public static bool[,] CutBImage(Image<Bgr, byte> img, int[] coords)
+        {
+            unsafe
+            {
+                MIplImage m = img.MIplImage;
+                byte* startPtr = (byte*)m.imageData.ToPointer();
+                byte* dataPtr = startPtr;
+
+                int width = img.Width;
+                int nChan = m.nChannels;
+                int padding = m.widthStep - m.nChannels * m.width;
+                int x, y;
+                bool[,] res = new bool[coords[2] - coords[0], coords[3] - coords[1]];
+
+                for (y = coords[1]; y < coords[3]; y++)
+                {
+                    for (x = coords[0]; x < coords[2]; x++)
+                    {
+                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
+                        res[x - coords[0], y - coords[1]] = dataPtr[0] != 0;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public static void BoostRed(Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+                // direct access to the image memory(sequencial)
+                // direcion top left -> bottom right
+
+                MIplImage m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+                            // store in the image
+                            dataPtr[2] = 255;
+
+                            // advance the pointer to the next pixel
+                            dataPtr += nChan;
+                        }
+
+                        //at the end of the line advance the pointer by the aligment bytes (padding)
+                        dataPtr += padding;
+                    }
+                }
+            }
         }
     }
 }

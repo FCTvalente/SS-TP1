@@ -419,25 +419,8 @@ namespace SS_OpenCV
             List<string[]> limitSign;
             List<string[]> warningSign;
             List<string[]> prohibitionSign;
+            //img = new Image<Bgr, byte>("../../Resources/imagens/digitos/0.png");
             ImageClass.Signs(img, img.Copy(), out limitSign, out warningSign, out prohibitionSign, 0);
-            int[,] labels;
-            /*
-            labels = ImageClass.connectedComponents(img);  //para testar connected components meter a mean no metodo RGBtoHSVPrime em comentario
-
-            HashSet<int> unique = new HashSet<int>();
-
-            Dictionary<int, int> duplicates = new Dictionary<int, int>();
-
-            foreach (var item in labels)
-                if (!unique.Add(item))
-                    if (duplicates.TryGetValue(item, out int count))
-                        duplicates[item] = count + 1;
-                    else
-                        duplicates[item] = 2;
-
-            foreach (var item in duplicates)
-                Console.WriteLine($"{item.Key} appears {item.Value} times");
-            */
             ImageViewer.Image = img.Bitmap;
             ImageViewer.Refresh(); // refresh image on the screen
 
