@@ -1225,7 +1225,7 @@ namespace SS_OpenCV
         public static Image<Bgr, byte> Signs(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, out List<string[]> limitSign, out List<string[]> warningSign, out List<string[]> prohibitionSign, int level)
         {
             byte[] colour = { 50, 0, 255 };
-            int i, j, value, shape, fx, fy;
+            int i, j, value, shape, fx, fy, maxHeight;
             int minSize = 50;
             float minRatio = .60f;
             double formFact, per;
@@ -1246,11 +1246,23 @@ namespace SS_OpenCV
             for (i = 0; i < coords.Count; i++)
             {
                 ConnectedComponents(subs[i], minSize, minRatio, out subcoords, out matrixes, out areas);
+                maxHeight = -1;
+                foreach(int[] hh in subcoords)
+                {
+                    if(maxHeight < hh[3] - hh[1])
+                    {
+                        maxHeight = hh[3] - hh[1];
+                    }
+                }
                 for(j = 0; j < subcoords.Count; j++)
                 {
                     t = subcoords[j];
+                    if((t[3] - t[1]) / (float)maxHeight < 0.25f)
+                    {
+                        continue;
+                    }
                     per = Perimeter(matrixes[j]);
-                    formFact = (Math.PI * 4d * areas[j]) / (per * per); System.Diagnostics.Debug.WriteLine(formFact);
+                    formFact = (Math.PI * 4d * areas[j]) / (per * per);
                     a = new int[]
                     {
                         t[0] + coords[i][0],
