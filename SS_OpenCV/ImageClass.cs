@@ -5,6 +5,8 @@ using Emgu.CV.Structure;
 using Emgu.CV;
 using System.Diagnostics;
 
+using Emgu.CV.UI;
+
 namespace SS_OpenCV
 {
     class ImageClass
@@ -1223,7 +1225,7 @@ namespace SS_OpenCV
         public static Image<Bgr, byte> Signs(Image<Bgr, byte> img, Image<Bgr, byte> imgCopy, out List<string[]> limitSign, out List<string[]> warningSign, out List<string[]> prohibitionSign, int level)
         {
             byte[] colour = { 50, 0, 255 };
-            int i, j, value, shape;
+            int i, j, value, shape, fx, fy;
             int minSize = 50;
             float minRatio = .60f;
             double formFact, per;
@@ -1235,12 +1237,10 @@ namespace SS_OpenCV
             //Mean(imgCopy, img);
             RedImage(imgCopy);
             RedChannel(imgCopy);
-            //BlackImage(img);
-            ConvertToGray(img); ConvertToBW_Otsu(img); //try cropping image and then otsu
-            List<int> areas;
-            List<int[]> coords, subcoords;
+            List<int> areas, nareas;
+            List<int[]> coords, subcoords, ncoords;
             List<int[]> found = new List<int[]>();
-            List<bool[,]> subs, matrixes;
+            List<bool[,]> subs, matrixes, nums;
             HVProjections(imgCopy, minSize, out coords, out subs);
 
             for(i = 0; i < coords.Count; i++)
@@ -1270,7 +1270,18 @@ namespace SS_OpenCV
                         shape = Shape(matrixes[j], 0.15f);
                         if (shape == 0)
                         {
-
+                            fx = (int)((a[2] - a[0]) / 6f);
+                            fy = (int)((a[3] - a[1]) / 3.5f);
+                            ConnectedComponents(OtsuBinary(Crop(img, new int[] { a[0] + fx, a[1] + fy, a[2] - fx, a[3] - fy })), 5, 0f, out ncoords, out nums, out nareas);
+                            value = GetValue(nums, nareas, 0.8f);
+                            if(value == -1)
+                            {
+                                prohibitionSign.Add(s);
+                            } else
+                            {
+                                s[0] = value.ToString();
+                                limitSign.Add(s);
+                            }
                         } else if(shape == 1)
                         {
                             warningSign.Add(s);
@@ -1686,6 +1697,67 @@ namespace SS_OpenCV
             }
         }
 
+        public static void BlackImage(Image<Bgr, byte> img)
+        {
+            unsafe
+            {
+                MIplImage m = img.MIplImage;
+
+                byte* startPtr = (byte*)m.imageData.ToPointer();
+                byte* dataPtr = startPtr;
+                byte blue, green, red;
+
+                int width = img.Width;
+                int height = img.Height;
+                int nChan = m.nChannels; // number of channels - 3
+                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
+                int x, y;
+
+                double[] prevHSV;
+                double[] prevRGB = new double[3];
+
+                if (nChan == 3) // image in RGB
+                {
+                    for (y = 0; y < height; y++)
+                    {
+                        for (x = 0; x < width; x++)
+                        {
+
+                            //retrive 3 colour components
+                            blue = dataPtr[0];
+                            green = dataPtr[1];
+                            red = dataPtr[2];
+
+                            prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
+                            if (prevHSV[1] < 1d && prevHSV[2] < .60d)
+                            {
+                                prevHSV[2] = 1;
+                            }
+                            else
+                            {
+                                prevHSV[2] = 0;
+                            }
+                            prevRGB = HSVtoRGB(prevHSV[0], prevHSV[1], prevHSV[2]);
+
+                            blue = (byte)(int)prevRGB[2];
+                            green = (byte)(int)prevRGB[1];
+                            red = (byte)(int)prevRGB[0];
+
+
+
+                            dataPtr[0] = blue;
+                            dataPtr[1] = green;
+                            dataPtr[2] = red;
+
+                            dataPtr += nChan;
+                        }
+
+                        dataPtr += padding;
+                    }
+                }
+            }
+        }
+
         public static void ConnectedComponents(bool[,] img, int minSize, float minRatio, out List<int[]> coords, out List<bool[,]> matrixes, out List<int> areas)
         {
             List<int[]> objects = new List<int[]>();
@@ -2016,71 +2088,132 @@ namespace SS_OpenCV
             return digits;
         }
 
-        public static int GetValue(List<bool[,]> components)
+        public static int GetValue(List<bool[,]> components, List<int> areas, float minLikeness)
         {
-            return -1;
+            bool[,] curr, cnum;
+            int i, j, x, y, nx, ny, maxLikeVal, count, width, nwidth, height, nheight;
+            int res = 0;
+            float maxLikeness;
+            int mult = 1;
+            for(i = 0; i < components.Count - 1; i++)
+            {
+                mult *= 10;
+            }
+            for (i = 0; i < components.Count; i++)
+            {
+                curr = components[i];
+                width = curr.GetLength(0);
+                height = curr.GetLength(1);
+                maxLikeness = -1f;
+                maxLikeVal = -1;
+                for(j = 0; j < 10; j++)
+                {
+                    cnum = digits[j];
+                    nwidth = cnum.GetLength(0);
+                    nheight = cnum.GetLength(1);
+                    count = 0;
+                    for (x = 0; x < width; x++)
+                    {
+                        nx = (int)Math.Floor((x / (float)width) * nwidth);
+                        for(y = 0; y < height; y++)
+                        {
+                            ny = (int)Math.Floor((y / (float)height) * nheight);
+                            if (curr[x, y] && cnum[nx, ny])
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                    if(maxLikeness < count / (float)areas[i])
+                    {
+                        maxLikeness = count / (float)areas[i];
+                        maxLikeVal = j;
+                    }
+                }
+                if(maxLikeness < minLikeness)
+                {
+                    return -1;
+                }
+                res += mult * maxLikeVal;
+                mult /= 10;
+                System.Diagnostics.Debug.WriteLine(maxLikeness); 
+            }
+            System.Diagnostics.Debug.WriteLine(res);
+            return res;
         }
 
-        public static bool[,] CutBImage(Image<Bgr, byte> img, int[] coords)
+        public static Image<Bgr, byte> Crop(Image<Bgr, byte> img, int[] coords)
         {
+
             unsafe
             {
-                MIplImage m = img.MIplImage;
-                byte* startPtr = (byte*)m.imageData.ToPointer();
+                Image<Bgr, byte> res = new Image<Bgr, byte>(coords[2] - coords[0], coords[3] - coords[1]);
+                MIplImage m1 = img.MIplImage;
+                MIplImage m2 = res.MIplImage;
+                byte* startPtr = (byte*)m1.imageData.ToPointer();
+                byte* dPtr = (byte*)m2.imageData.ToPointer();
                 byte* dataPtr = startPtr;
 
                 int width = img.Width;
-                int nChan = m.nChannels;
-                int padding = m.widthStep - m.nChannels * m.width;
+                int nChan1 = m1.nChannels;
+                int nChan2 = m2.nChannels;
+                int padding1 = m1.widthStep - m1.nChannels * m1.width;
+                int padding2 = m2.widthStep - m2.nChannels * m2.width;
                 int x, y;
-                bool[,] res = new bool[coords[2] - coords[0], coords[3] - coords[1]];
 
                 for (y = coords[1]; y < coords[3]; y++)
                 {
                     for (x = coords[0]; x < coords[2]; x++)
                     {
-                        dataPtr = startPtr + y * padding + (y * width + x) * nChan;
-                        res[x - coords[0], y - coords[1]] = dataPtr[0] != 0;
+                        dataPtr = startPtr + y * padding1 + (y * width + x) * nChan1;
+                        dPtr[0] = dataPtr[0];
+                        dPtr[1] = dataPtr[1];
+                        dPtr[2] = dataPtr[2];
+                        dPtr += nChan2;
                     }
+                    dPtr += padding2;
                 }
+                return res;
             }
-            return null;
         }
 
-        public static void BoostRed(Image<Bgr, byte> img)
+        public static bool[,] OtsuBinary(Image<Bgr, byte> img)
         {
+            ConvertToBW_Otsu(img);
+            //ImageViewer view = new ImageViewer();
+            //view.Image = img;
+            //view.ShowDialog();
+            
+            bool[,] res;
+            MIplImage m;
+
+            int width;
+            int height;
+            int nChan;
+            int padding;
+            int x, y;
+
             unsafe
             {
-                // direct access to the image memory(sequencial)
-                // direcion top left -> bottom right
+                m = img.MIplImage;
+                byte* dataPtr = (byte*)m.imageData.ToPointer();
+                width = img.Width;
+                height = img.Height;
+                nChan = m.nChannels;
+                padding = m.widthStep - m.nChannels * m.width;
 
-                MIplImage m = img.MIplImage;
-                byte* dataPtr = (byte*)m.imageData.ToPointer(); // Pointer to the image
-
-                int width = img.Width;
-                int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
-                int x, y;
-
-                if (nChan == 3) // image in RGB
+                res = new bool[width, height];
+                for (y = 0; y < height; y++)
                 {
-                    for (y = 0; y < height; y++)
+                    for (x = 0; x < width; x++)
                     {
-                        for (x = 0; x < width; x++)
-                        {
-                            // store in the image
-                            dataPtr[2] = 255;
-
-                            // advance the pointer to the next pixel
-                            dataPtr += nChan;
-                        }
-
-                        //at the end of the line advance the pointer by the aligment bytes (padding)
-                        dataPtr += padding;
+                        res[x, y] = dataPtr[0] == 0;
+                        dataPtr += nChan;
                     }
+                    dataPtr += padding;
                 }
             }
+            return res;
         }
     }
 }
