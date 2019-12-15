@@ -1282,7 +1282,7 @@ namespace SS_OpenCV
                             fx = (int)((a[2] - a[0]) / 6f);
                             fy = (int)((a[3] - a[1]) / 3.5f);
                             ConnectedComponents(OtsuBinary(Crop(img, new int[] { a[0] + fx, a[1] + fy, a[2] - fx, a[3] - fy })), 5, 0f, out ncoords, out nums, out nareas);
-                            value = GetValue(nums, nareas, 0.58f);
+                            value = GetValue(nums, 0.58f);
                             if(value == -1)
                             {
                                 prohibitionSign.Add(s); System.Diagnostics.Debug.WriteLine("Prohibition sign: " + s[1] + " " + s[2] + " " + s[3] + " " + s[4]);
@@ -2035,7 +2035,7 @@ namespace SS_OpenCV
             return digits;
         }
 
-        public static int GetValue(List<bool[,]> components, List<int> areas, float minLikeness)
+        public static int GetValue(List<bool[,]> components, float minLikeness)
         {
             bool[,] curr, cnum;
             int i, j, x, y, nx, ny, maxLikeVal, count, width, nwidth, height, nheight;
