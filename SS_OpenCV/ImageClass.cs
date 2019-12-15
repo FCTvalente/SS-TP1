@@ -1260,14 +1260,14 @@ namespace SS_OpenCV
                     }
                     per = Perimeter(matrixes[j]);
                     formFact = (Math.PI * 4d * areas[j]) / (per * per);
-                    a = new int[]
+                     a = new int[]
                     {
                         t[0] + coords[i][0],
                         t[1] + coords[i][1],
                         t[2] + coords[i][0],
                         t[3] + coords[i][1]
                     };
-                    if (formFact > 0.08d && formFact < 0.5d)
+                    if (formFact > 0.08d && formFact < 0.75d)
                     {
                         s = new string[] {
                             "-1",
