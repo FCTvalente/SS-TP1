@@ -5,8 +5,6 @@ using Emgu.CV.Structure;
 using Emgu.CV;
 using System.Diagnostics;
 
-using Emgu.CV.UI;
-
 namespace SS_OpenCV
 {
     class ImageClass
@@ -1234,7 +1232,6 @@ namespace SS_OpenCV
             limitSign = new List<string[]>();
             warningSign = new List<string[]>();
             prohibitionSign = new List<string[]>();
-            //Mean(imgCopy, img);
             RedImage(imgCopy);
             RedChannel(imgCopy);
             List<int> areas, nareas;
@@ -1288,15 +1285,15 @@ namespace SS_OpenCV
                             value = GetValue(nums, nareas, 0.58f);
                             if(value == -1)
                             {
-                                prohibitionSign.Add(s); System.Diagnostics.Debug.WriteLine("Prohibition sign");
+                                prohibitionSign.Add(s); System.Diagnostics.Debug.WriteLine("Prohibition sign: " + s[1] + " " + s[2] + " " + s[3] + " " + s[4]);
                             } else
                             {
                                 s[0] = value.ToString();
-                                limitSign.Add(s); System.Diagnostics.Debug.WriteLine("Limit sign: " + value);
+                                limitSign.Add(s); System.Diagnostics.Debug.WriteLine("Limit sign: " + value + " - " + s[1] + " " + s[2] + " " + s[3] + " " + s[4]);
                             }
                         } else if(shape == 1)
                         {
-                            warningSign.Add(s); System.Diagnostics.Debug.WriteLine("Warning sign");
+                            warningSign.Add(s); System.Diagnostics.Debug.WriteLine("Warning sign: " + s[1] + " " + s[2] + " " + s[3] + " " + s[4]);
                         } else
                         {
                             continue;
@@ -1709,67 +1706,6 @@ namespace SS_OpenCV
             }
         }
 
-        public static void BlackImage(Image<Bgr, byte> img)
-        {
-            unsafe
-            {
-                MIplImage m = img.MIplImage;
-
-                byte* startPtr = (byte*)m.imageData.ToPointer();
-                byte* dataPtr = startPtr;
-                byte blue, green, red;
-
-                int width = img.Width;
-                int height = img.Height;
-                int nChan = m.nChannels; // number of channels - 3
-                int padding = m.widthStep - m.nChannels * m.width; // alinhament bytes (padding)
-                int x, y;
-
-                double[] prevHSV;
-                double[] prevRGB = new double[3];
-
-                if (nChan == 3) // image in RGB
-                {
-                    for (y = 0; y < height; y++)
-                    {
-                        for (x = 0; x < width; x++)
-                        {
-
-                            //retrive 3 colour components
-                            blue = dataPtr[0];
-                            green = dataPtr[1];
-                            red = dataPtr[2];
-
-                            prevHSV = RGBtoHSV((int)red, (int)blue, (int)green);
-                            if (prevHSV[1] < 1d && prevHSV[2] < .60d)
-                            {
-                                prevHSV[2] = 1;
-                            }
-                            else
-                            {
-                                prevHSV[2] = 0;
-                            }
-                            prevRGB = HSVtoRGB(prevHSV[0], prevHSV[1], prevHSV[2]);
-
-                            blue = (byte)(int)prevRGB[2];
-                            green = (byte)(int)prevRGB[1];
-                            red = (byte)(int)prevRGB[0];
-
-
-
-                            dataPtr[0] = blue;
-                            dataPtr[1] = green;
-                            dataPtr[2] = red;
-
-                            dataPtr += nChan;
-                        }
-
-                        dataPtr += padding;
-                    }
-                }
-            }
-        }
-
         public static void ConnectedComponents(bool[,] img, int minSize, float minRatio, out List<int[]> coords, out List<bool[,]> matrixes, out List<int> areas)
         {
             List<int[]> objects = new List<int[]>();
@@ -2072,7 +2008,6 @@ namespace SS_OpenCV
             for(i = 0; i < 10; i++)
             {
                 img = new Image<Bgr, byte>(prefix + i + sufix);
-                Negative(img);
                 ConvertToBW_Otsu(img);
 
                 unsafe
@@ -2089,7 +2024,7 @@ namespace SS_OpenCV
                     {
                         for(x = 0; x < width; x++)
                         {
-                            t[x, y] = dataPtr[0] != 0;
+                            t[x, y] = dataPtr[0] == 0;
                             dataPtr += nChan;
                         }
                         dataPtr += padding;
@@ -2130,10 +2065,6 @@ namespace SS_OpenCV
                         for(y = 0; y < height; y++)
                         {
                             ny = (int)Math.Floor((y / (float)height) * nheight);
-                            //if (curr[x, y] && cnum[nx, ny])
-                            //{
-                            //    count++;
-                            //}
                             if(curr[x, y] == cnum[nx, ny])
                             {
                                 count++;
@@ -2143,11 +2074,6 @@ namespace SS_OpenCV
                             }
                         }
                     }
-                    //if(maxLikeness < count / (float)areas[i])
-                    //{
-                    //    maxLikeness = count / (float)areas[i];
-                    //    maxLikeVal = j;
-                    //}
                     if (maxLikeness < count / (float)(width * height))
                     {
                         maxLikeness = count / (float)(width * height);
@@ -2160,7 +2086,6 @@ namespace SS_OpenCV
                 }
                 res += mult * maxLikeVal;
                 mult /= 10;
-                //System.Diagnostics.Debug.WriteLine(maxLikeness); 
             }
             return res;
         }
@@ -2203,9 +2128,6 @@ namespace SS_OpenCV
         public static bool[,] OtsuBinary(Image<Bgr, byte> img)
         {
             ConvertToBW_Otsu(img);
-            //ImageViewer view = new ImageViewer();
-            //view.Image = img;
-            //view.ShowDialog();
             
             bool[,] res;
             MIplImage m;
